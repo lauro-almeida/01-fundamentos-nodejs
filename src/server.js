@@ -1,30 +1,32 @@
 import http from 'node:http'
 import { json } from './middlewares/json.js'
+import { routes } from './routes.js'
+import { extractQueryParameters } from './utils/extract-query-parameters.js'
 
-const users = []
 
 const server = http.createServer(async (req, res) => {
     const { method, url } = req
 
+    console.log(url)
+
     await json(req, res)
 
+    const route = routes.find(route => {
+        return route.method === method && route.path.test(url)
+    })
 
-    if (method === 'GET' && url === '/users') {
-        return res
-        .end(JSON.stringify(users))
-    }
+    if (route) {
+        const routeParams = req.url.match(route.path)
+        console.log(routeParams)
 
-    if (method === 'POST' && url === '/users') {
-        const { name, email } = req.body
-        users.push({
-            id: 1,
-            name,
-            email,
-        })
+        const { query, ...params } =  routeParams.groups
 
-        return res
-            .writeHead(201)
-            .end()
+        req.params = params
+        req.query = query ? extractQueryParameters(query) : {}
+
+        console.log(req.query)
+
+        return route.handler(req, res)
     }
 
     return res
@@ -32,5 +34,4 @@ const server = http.createServer(async (req, res) => {
         .end()
 })
 
-server.listen(3333)
-// localhost:3333
+server.listen(3334)
